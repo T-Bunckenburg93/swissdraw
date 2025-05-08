@@ -3,11 +3,13 @@ use rfd::FileDialog;
 use csv::Reader;
 use rusqlite::{Connection, Result};
 use nalgebra::*;
+use crate::DB;
 
 
 fn csv_to_db(path: String, conn: &Connection) ->  rusqlite::Result<()> {
     let mut reader = Reader::from_path(path).expect("Failed to read CSV file");
-    let mut stmt = conn.prepare("CREATE TABLE temp_results (round REAL, teamA TEXT, teamB TEXT, teamAscore REAL, teamBscore REAL)")?;
+    // let mut stmt = conn.prepare("CREATE TABLE if not exists temp_results (round REAL, teamA TEXT, teamB TEXT, teamAscore REAL, teamBscore REAL)")?;
+    let mut stmt = conn.prepare("CREATE TABLE if not exists temp_results (round REAL, teamA TEXT, teamB TEXT, teamAscore REAL, teamBscore REAL)")?;
     stmt.execute([])?;
 
     for result in reader.records() {
@@ -70,7 +72,8 @@ fn games_matrix(team_list: &DVector<String>, teams_played: &DVector<String>) -> 
 // this does the strength calculations on a bunch of games.
 // it takes a path to a csv file, and then does the calculations and returns the scores and the team
 fn calculate_strengths(path: String) -> Result<(DVector<String>, DVector<f64>)> {
-    let conn = Connection::open_in_memory()?;
+    // let conn = Connection::open_in_memory()?;
+    let conn = DB.lock().unwrap();
 
     csv_to_db(path, &conn).expect("Failed to load CSV into DB");
     // let querystring = &format!(r#"CREATE TABLE temp_results AS SELECT * FROM read_csv_auto('{path}');"#,path = path).to_string();
@@ -80,6 +83,9 @@ fn calculate_strengths(path: String) -> Result<(DVector<String>, DVector<f64>)> 
     let team_a_vec = get_string_vec("SELECT teamA FROM temp_results".to_string(), &conn)?;
     let team_b_vec = get_string_vec("SELECT teamB FROM temp_results".to_string(), &conn)?;
     let margin_vec = get_vec("SELECT teamAscore - teamBscore FROM temp_results".to_string(), &conn)?;
+
+    conn.execute("drop TABLE if exists temp_results",[]).expect("Failed to drop temp_results table");
+    
 
     let m_a = games_matrix(&team_list, &team_a_vec);
     let m_b = games_matrix(&team_list, &team_b_vec);

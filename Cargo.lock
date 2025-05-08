@@ -4423,6 +4423,7 @@ dependencies = [
  "dioxus",
  "directories",
  "nalgebra",
+ "once_cell",
  "rfd 0.15.3",
  "rusqlite",
 ]

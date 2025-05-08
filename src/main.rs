@@ -4,10 +4,12 @@ use dioxus::prelude::*;
 use rfd::FileDialog;
 use directories::ProjectDirs;
 use rusqlite::{Connection, Result};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 
 use views::{Blog, Home, Navbar,Calculate_Scores};
-// use components::init_app;
+use components::Init_DB;
 
 /// Define a components module that contains all shared components for our app.
 mod components;
@@ -38,6 +40,17 @@ enum Route {
         #[route("/calc_score")]
         Calculate_Scores {},
 }
+
+
+
+pub static DB: Lazy<Mutex<Connection>> = Lazy::new(|| {
+    let conn = Init_DB().expect("Failed to open DB");
+    // Optional: run migrations here
+    Mutex::new(conn)
+});
+
+
+
 
 // We can import assets in dioxus with the `asset!` macro. This macro takes a path to an asset relative to the crate root.
 // The macro returns an `Asset` type that will display as the path to the asset in the browser or a local path in desktop bundles.
