@@ -1,0 +1,14 @@
+round,teamA,teamB,teamAScore,teamBScore,field
+1,Wolves,Eagles,10,10,Field A
+1,Tigers,Sharks,7,12,Field B
+1,Lions,Hawks,3,3,Field C
+1,Panthers,Bulls,14,9,Field D
+2,Wolves,Sharks,8,11,Field A
+2,Eagles,Hawks,6,6,Field B
+2,Tigers,Panthers,10,7,Field C
+2,Lions,Bulls,5,13,Field D
+3,Wolves,Lions,9,9,Field A
+3,Eagles,Panthers,15,13,Field B
+3,Sharks,Bulls,4,6,Field C
+3,Tigers,Hawks,12,12,Field D
+4,chunguss,Hawks,10,1,Feild A
