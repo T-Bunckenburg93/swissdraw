@@ -1,0 +1,40 @@
+.team-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Arial', sans-serif;
+    margin-top: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);  /* Subtle shadow for depth */
+    border-radius: 8px;  /* Rounded corners */
+    overflow: hidden; /* Ensure rounded corners */
+}
+
+.header-cell {
+    text-align: left;
+    padding: 14px 10px;
+    background-color: #babbba;  /* Fresh green background */
+    color: white;  /* White text for better contrast */
+    font-weight: bold;
+    font-size: 16px;  /* Slightly larger font for better readability */
+    border-bottom: 3px solid #000000;  /* Stronger border for header separation */
+}
+
+.data-cell {
+    padding: 12px 10px;
+    border-bottom: 1px solid #ddd;  /* Lighter border */
+    text-align: left;
+    font-size: 14px;
+    color: #bbb9b9;  /* Dark text for readability */
+}
+
+.team-table tr:hover {
+    background-color: #000000;  /* Light hover effect */
+    cursor: pointer;  /* Pointer cursor to indicate interactivity */
+}
+
+/* .team-table tr:nth-child(even) { */
+    /* background-color: #fafafa;  Softer, lighter background for even rows */
+/* } */
+
+.team-table tr:last-child td {
+    border-bottom: none;  /* Remove border on the last row for a cleaner look */
+}

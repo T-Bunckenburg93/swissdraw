@@ -20,7 +20,7 @@ pub fn Hero() -> Element {
                 a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
                 a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
                 a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
-                Link { to: Route::Calculate_Scores {}, "Load scores" }
+                // Link { to: Route::Calculate_Scores {}, "Load scores" }
             }
         }
     }

@@ -17,5 +17,14 @@ pub use blog::Blog;
 mod navbar;
 pub use navbar::Navbar;
 
-mod calculate_scores;
-pub use calculate_scores::Calculate_Scores;
+mod new_draw;
+pub use new_draw::New_Draw;
+
+mod load_draw;
+pub use load_draw::Load_Draw;
+
+mod help;
+pub use help::Help;
+
+mod score_prior_games;
+pub use score_prior_games::Score_Prior_Games;
