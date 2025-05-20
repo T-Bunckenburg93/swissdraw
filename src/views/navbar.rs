@@ -15,18 +15,25 @@ pub fn Navbar() -> Element {
 
         div {
             id: "navbar",
+
             Link {
-                to: Route::New_Draw {},
-                "New "
+                to: Route::Home {},
+                "Home"
             }
-            Link {
-                to: Route::Load_Draw { },
-                "Load"
-            }
-            Link {
-                to: Route::Score_Prior_Games {},
-                "Score Prior"
-            }
+
+            // Link {
+            //     to: Route::New_Draw {},
+            //     "New"            
+            // }
+
+            // Link {
+            //     to: Route::Load_Draw { },
+            //     "Load"
+            // }
+            // Link {
+            //     to: Route::Score_Prior_Games {},
+            //     "Score Prior"
+            // }
             Link {
                 to: Route::Help { },
                 "Help"
