@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use crate::Route;
 
-const HEADER_SVG: Asset = asset!("/assets/header.svg");
+const HEADER_SVG: Asset = asset!("/assets/icon_transparent.png", ImageAssetOptions::new().with_avif());
 
 #[component]
 pub fn Hero() -> Element {
@@ -11,16 +11,13 @@ pub fn Hero() -> Element {
             // Attributes should be defined in the element before any children
             id: "hero",
             // After all attributes are defined, we can define child elements and components
-            img { src: HEADER_SVG, id: "header" }
+            img { src: HEADER_SVG, id: "header", style: "width: 40%; height: auto;" }
             div { id: "links",
                 // The RSX macro also supports text nodes surrounded by quotes
                 a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
-                a { href: "https://dioxuslabs.com/awesome", "🚀 Awesome Dioxus" }
-                a { href: "https://github.com/dioxus-community/", "📡 Community Libraries" }
-                a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
-                a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
-                a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
-                // Link { to: Route::Calculate_Scores {}, "Load scores" }
+                Link { to: Route::New_Draw {}, "New Draw" }
+                Link { to: Route::Load_Draw {}, "Load Draw" }
+                Link { to: Route::Score_Prior_Games {}, "Load scores" }
             }
         }
     }
