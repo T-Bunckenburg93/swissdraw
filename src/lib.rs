@@ -109,6 +109,12 @@ impl SwissDraw {
         self.team_list.push(team);
     }
 
+    pub fn add_teams(&mut self, teams: Vec<Team>) {
+        for team in teams {
+            self.team_list.push(team);
+        }
+    }
+
 
     pub fn get_strengths(&mut self) -> Vec<Team> {
         let mut strengths = self.team_list.clone();
