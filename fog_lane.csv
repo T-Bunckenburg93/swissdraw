@@ -1,0 +1,34 @@
+round,teamA,teamB,teamAScore,teamBScore,field
+1,Smashd,Chevron,9,15,Pitch 1
+1,Clapham,GB,15,10,Pitch 2
+1,SMOG,Bristol,12,11,Pitch 4
+1,Dublin,Chevron,3,15,Pitch 1
+1,Clapham,XVI,15,5,Pitch 2
+1,Smashd,Ranelagh,8,14,Pitch 3
+1,Lemmings,GB,9,15,Pitch 4
+2,SMOG,XVI,14,8,Pitch 1
+2,Lemmings,Ranelagh,14,15,Pitch 2
+2,Dublin,Bristol,1,15,Pitch 4
+2,SMOG,Chevron,12,15,Pitch 1
+2,Smashd,GB,10,15,Pitch 2
+3,Clapham,XVI,15,4,Pitch 1
+3,Lemmings,Bristol,13,8,Pitch 2
+3,Dublin,Ranelagh,4,15,Pitch 3
+3,SMOG,Ranelagh,10,12,Pitch 3
+3,Clapham,Bristol,15,5,Pitch 1
+3,XVI,GB,11,15,Pitch 2
+4,SMOG,GB,14,11,Pitch 1
+4,Smashd,Bristol,6,12,Pitch 2
+4,Lemmings,Chevron,10,15,Pitch 1
+4,Clapham,Ranelagh,12,14,Pitch 2
+4,Dublin,XVI,9,15,Pitch 4
+5,Lemmings,Smashd,14,8,Pitch 3
+5,Smashd,Dublin,4,15,Pitch 3
+5,Bristol,GB,9,14,Pitch 4
+5,GB,XVI,15,9,Pitch 4
+6,Lemmings,Dublin,15,9,Pitch 10
+6,Bristol,XVI,13,12, Pitch 11
+6,Ranelagh,Chevron,9,13,Pitch 1
+6,Clapham,SMOG,15,8,Pitch 2
+7,Ranelagh,SMOG,15,10,Pitch 1
+7,Clapham,Chevron,14,11,Pitch 1
