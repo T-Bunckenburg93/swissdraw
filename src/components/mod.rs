@@ -11,8 +11,8 @@ pub use echo::Echo;
 mod init_db;
 pub use init_db::Init_DB;
 
-// mod swiss_draw;
-// pub use swiss_draw::SwissDraw;
+mod manually_input_teams;
+pub use manually_input_teams::Input_Teams;
 
 mod score_prior_games;
 pub use score_prior_games::Score_Prior;
