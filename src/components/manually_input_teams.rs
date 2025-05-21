@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use swissdraw::{SwissDraw,Team,Game};
 use crate::DB;
 use rusqlite::{Connection, Result};
+use crate::Route;
 
 const HEADER_SVG: Asset = asset!("/assets/icon_transparent.png", ImageAssetOptions::new().with_avif());
 
@@ -103,28 +104,18 @@ pub fn Input_Teams() -> Element {
                         evt.prevent_default();
 
                         if sd_name().is_empty() {
-                            // Don't proceed if the input is empty
-                            // log::warn!("Form is empty!");
                             return;
                         } else {
+                            let mut sd = SwissDraw::new();
+                            sd.round = 1;
+                            sd.name = sd_name.to_string();
+                            sd.team_list = teams.read().clone();
 
-                        // I want to create a new swiss draw
-                        let mut sd = SwissDraw::new();
-                        sd.round = 1;
-                        sd.name = sd_name.to_string();
-                        sd.team_list = teams.read().clone();
-                        // I want to save the swiss draw into the db
-                        // sd.save_to_db();
-                        // I want to redirect to the draw page with the id of the draw
-                        // Redirect to the draw page with the id of the draw
+                            let conn = DB.lock().unwrap();
+                            sd.sync_draw(&conn).expect("Failed to sync draw");
 
-                        let sd_len = sd.team_list.len();
-                        println!("Swiss Draw: {:?}", sd.team_list);
-                        println!("Swiss Draw name: {:?}", sd.name);
-
-                        let conn = DB.lock().unwrap();
-                        sd.sync_draw(&conn).expect("Failed to sync draw");
-
+                            // Use navigation to route to the Enter_Scores page
+                            use_navigator().replace(Route::Enter_Scores { sd_id: sd.id });
                         }
                     },
                     "Submit Teams"

@@ -38,7 +38,7 @@ enum Route {
         // an `id` prop of type `i32`.
         Blog { id: i32 }, // will rm soon
 
-        #[route("/Draw/:sd_id")]
+        #[route("/Enter_Scores/:sd_id")]
         // Fields of the route variant will be passed to the component as props. In this case, the blog component must accept
         // an `id` prop of type `i32`.
         Enter_Scores { sd_id: i64 }, // will rm soon

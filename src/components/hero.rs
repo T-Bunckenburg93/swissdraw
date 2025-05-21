@@ -17,7 +17,7 @@ pub fn Hero() -> Element {
                 a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
                 Link { to: Route::New_Draw {}, "New Draw" }
                 Link { to: Route::Load_Draw {}, "Load Draw" }
-                Link { to: Route::Score_Prior_Games {}, "Load scores" }
+                Link { to: Route::Score_Prior_Games {}, "Score Results" }
             }
         }
     }
