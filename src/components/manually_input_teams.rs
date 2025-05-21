@@ -1,5 +1,7 @@
 use dioxus::prelude::*;
 use swissdraw::{SwissDraw,Team,Game};
+use crate::DB;
+use rusqlite::{Connection, Result};
 
 const HEADER_SVG: Asset = asset!("/assets/icon_transparent.png", ImageAssetOptions::new().with_avif());
 
@@ -14,6 +16,7 @@ pub fn Input_Teams() -> Element {
 
     let mut team_name = use_signal(|| "".to_string());
     let mut team_rank = use_signal(|| "0".to_string());
+    let mut sd_name = use_signal(|| "".to_string());
 
     rsx! {
         div {
@@ -87,11 +90,28 @@ pub fn Input_Teams() -> Element {
 // The button will save the teams into a swiss draw. write them into the db, and then redirect to the draw page with the id of the draw
 // The button will only appears if there are at least 2 teams in the vec
             if teams.read().len() > 1 {
+
+                p { "Please enter a name for the swiss draw." }
+                input { 
+                    type: "text", 
+                    placeholder: "Swiss Draw Name", 
+                    value: "{sd_name}", 
+                    oninput: move |event| {sd_name.set(event.value());}
+                }
                 button {
-                    onclick: move |_| {
+                    onclick: move |evt| {
+                        evt.prevent_default();
+
+                        if sd_name().is_empty() {
+                            // Don't proceed if the input is empty
+                            // log::warn!("Form is empty!");
+                            return;
+                        } else {
+
                         // I want to create a new swiss draw
                         let mut sd = SwissDraw::new();
                         sd.round = 1;
+                        sd.name = sd_name.to_string();
                         sd.team_list = teams.read().clone();
                         // I want to save the swiss draw into the db
                         // sd.save_to_db();
@@ -100,6 +120,12 @@ pub fn Input_Teams() -> Element {
 
                         let sd_len = sd.team_list.len();
                         println!("Swiss Draw: {:?}", sd.team_list);
+                        println!("Swiss Draw name: {:?}", sd.name);
+
+                        let conn = DB.lock().unwrap();
+                        sd.sync_draw(&conn).expect("Failed to sync draw");
+
+                        }
                     },
                     "Submit Teams"
                 }
