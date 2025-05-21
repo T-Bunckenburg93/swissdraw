@@ -8,7 +8,7 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 
-use views::{Blog, Home, Navbar,New_Draw,Load_Draw,Help,Score_Prior_Games};
+use views::{Blog, Home, Navbar,New_Draw,Load_Draw,Help,Score_Prior_Games, Enter_Scores};
 use components::Init_DB;
 
 /// Define a components module that contains all shared components for our app.
@@ -37,6 +37,12 @@ enum Route {
         // Fields of the route variant will be passed to the component as props. In this case, the blog component must accept
         // an `id` prop of type `i32`.
         Blog { id: i32 }, // will rm soon
+
+        #[route("/Draw/:sd_id")]
+        // Fields of the route variant will be passed to the component as props. In this case, the blog component must accept
+        // an `id` prop of type `i32`.
+        Enter_Scores { sd_id: i64 }, // will rm soon
+
 
         // #[route("/calc_score")]
         // Calculate_Scores {},
