@@ -5,7 +5,8 @@ use good_lp::*;
 use std::collections::HashMap;
 use csv::Reader;
 use serde::Deserialize;
-
+use rusqlite::{Connection, Result, params};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // pub enum ByeLocation {
 //     Start,
@@ -18,13 +19,13 @@ use serde::Deserialize;
 #[derive(Debug)]
 pub struct Game {
     // pub sd_id: u64, // random id to keep SD's unique, do we need here?
-    pub game_id: u64, // random id to keep games unique
-    pub round: u64,
-    pub field: u64,
+    pub id: i64, // random id to keep games unique
+    pub round: i64,
+    pub field: i64,
     pub team_a: String,
     pub team_b: String,
-    pub team_a_score: u64,
-    pub team_b_score: u64,
+    pub team_a_score: i64,
+    pub team_b_score: i64,
     pub streamed: bool,
     pub played: bool,
 }
@@ -32,25 +33,26 @@ pub struct Game {
 // this is for deserializing from a csv file
 #[derive(Debug, Deserialize)]
 struct GameRow {
-    round: Option<u64>,
+    round: Option<i64>,
     teamA: String,
     teamB: String,
-    teamAScore: u64,
-    teamBScore: u64,
+    teamAScore: i64,
+    teamBScore: i64,
     field: String,
 }
 
 #[derive(Clone)]
 #[derive(Debug)]
 pub struct Team {
-    pub id: u64,
+    pub id: i64,
     pub name: String,
     pub rank: f64,
 }
 
 pub struct SwissDraw{
-    pub id : u64,
-    pub round: u64,
+    pub id : i64,
+    pub name: String,
+    pub round: i64,
     pub team_list: Vec<Team>,
     pub latest_rank:Vec<Team>,
     pub games: Vec<Game>,
@@ -59,9 +61,9 @@ pub struct SwissDraw{
 
 // can I define a way to print them all nicely?
 impl Game {
-    pub fn new(field: u64, team_a: String, team_b: String) -> Game {
+    pub fn new(field: i64, team_a: String, team_b: String) -> Game {
         Game {
-            game_id: rand::random(),
+            id: rand::random(),
             round:0 ,
             field,
             team_a,
@@ -75,7 +77,7 @@ impl Game {
 }
 
 impl Team {
-    pub fn new(id: u64, name: String, rank: f64) -> Team {
+    pub fn new(id: i64, name: String, rank: f64) -> Team {
         Team {
             id,
             name,
@@ -89,6 +91,7 @@ impl SwissDraw {
     pub fn new() -> SwissDraw {
         SwissDraw {
             id: rand::random(),
+            name: "".to_string(),
             round: 0,
             team_list: Vec::new(),
             latest_rank: Vec::new(),
@@ -177,7 +180,6 @@ impl SwissDraw {
                 game.streamed = false;
                 game.field = 0;
             }
-            
             self.add_game(game);
         }
     }
@@ -187,7 +189,7 @@ impl SwissDraw {
     pub fn csv_to_games(&mut self, path: String) {
         let mut rdr = Reader::from_path(path).expect("Failed to open CSV file");
 
-        let mut id_counter = self.games.len() as u64 + 1;  // continue id from existing games
+        let mut id_counter = self.games.len() as i64 + 1;  // continue id from existing games
 
         for result in rdr.deserialize() {
             let row: GameRow = match result {
@@ -198,7 +200,7 @@ impl SwissDraw {
                 }
             };
             let game = Game {
-                game_id: id_counter,
+                id: id_counter,
                 round: row.round.unwrap_or(1),
                 field: 1,
                 team_a: row.teamA,
@@ -234,6 +236,35 @@ impl SwissDraw {
 
         Ok(true)
     }
+
+    
+
+    // fn to save the draw to a db.
+    pub fn sync_draw(&self, conn: &Connection) -> Result<()> {
+        // ok, so first up. Look at the draw table and see if it exists
+        let sd_id = self.id;
+
+        let sd_exists: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM draw WHERE id = ?1)",
+            params![&sd_id],
+            |row| row.get(0),
+        ).expect("Failed to query draw table");
+
+        
+        if !sd_exists {
+            println!("Swiss draw does not exist, creating new one");
+            save_draw(self, conn)?;
+        }
+        else {
+            println!("Swiss draw exists but we can't update it yet. Creating a new1");
+            // update the draw
+            save_draw(self, conn)?;
+        }
+        Ok(())
+
+    }
+
+
 }
 
 
@@ -461,6 +492,46 @@ pub fn opt(teams:  &Vec<Team>, costs: &DMatrix<f64>) -> Vec<Game> {
     }
 
     games
+
+}
+
+
+// fn to save a new draw to a db.
+fn save_draw(swissdraw: &SwissDraw, conn: &Connection) -> Result<()> {
+
+    println!("Saving swiss draw to db");
+let now = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs())
+    .expect("Timestamp too large for i64");
+    // I want to create a new row in the draw table
+    conn.execute(
+        "INSERT INTO draw (id, name, last_modified) VALUES (?1, ?2, ?3)",
+        rusqlite::params![swissdraw.id, swissdraw.name, &now ],
+    ).unwrap_or_else(|e| { panic!("Failed to insert draw into db: {}", e);});
+
+    println!("saved draw to db");
+
+
+    // now we want to add the teams to the teams table
+    for team in &swissdraw.team_list {
+        // println!("{} {} {} {}",swissdraw.id, team.id, team.name, team.rank);
+        conn.execute(
+            "INSERT INTO teams (sd_id, id, name, rank) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![swissdraw.id, team.id, team.name, team.rank],
+        ).unwrap_or_else(|e| { panic!("Failed to insert team into db: {}", e);});
+    };
+    println!("saved teams to db");
+
+    // and the games to the games table
+    for game in &swissdraw.games {
+        conn.execute(
+            "INSERT INTO games (sd_id, id, team_a_id, team_b_id, team_a_score, team_b_score, played, streamed, _meta__is_current, _meta__is_deleted, _meta__last_modified) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![swissdraw.id, game.id, game.team_a, game.team_b, game.team_a_score, game.team_b_score, game.played, game.streamed, true, false, &now],
+        ).unwrap_or_else(|e| { panic!("Failed to insert game into db: {}", e);});
+    };
+    println!("saved games to db");
+
+
+    Ok(())
 
 }
 
