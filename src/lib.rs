@@ -7,6 +7,7 @@ use csv::Reader;
 use serde::Deserialize;
 use rusqlite::{Connection, Result, params};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashSet;
 
 // pub enum ByeLocation {
 //     Start,
@@ -48,7 +49,7 @@ pub struct Team {
     pub name: String,
     pub rank: f64,
 }
-
+#[derive(Clone, Debug)]
 pub struct SwissDraw{
     pub id : i64,
     pub name: String,
@@ -118,6 +119,16 @@ impl SwissDraw {
         }
     }
 
+    pub fn edit_game_scores(&mut self, id: i64, team_a_score: i64, team_b_score: i64) {
+        for game in &mut self.games {
+            if game.id == id {
+                game.team_a_score = team_a_score;
+                game.team_b_score = team_b_score;
+                game.played = true;
+            }
+        }
+    }
+
 
     pub fn get_strengths(&mut self) -> Vec<Team> {
         let mut strengths = self.team_list.clone();
@@ -171,6 +182,8 @@ impl SwissDraw {
         //     println!("Game: {} vs {}", game.team_a, game.team_b);
         // }
         // add the games to the swiss draw
+        let mut field_n = 1;
+
         for mut game in games {
             game.round = self.round;
             if  game.team_a == "_BYE_" || game.team_b == "_BYE_" {
@@ -180,7 +193,16 @@ impl SwissDraw {
                 game.streamed = false;
                 game.field = 0;
             }
+
+
+            // print a all the game fields
+            println!("Game: {} vs {} field: {}", game.team_a, game.team_b, game.field);
+
+            // set the field number
+            game.field = field_n;
+           
             self.add_game(game);
+            field_n += 1;
         }
     }
 
@@ -256,9 +278,9 @@ impl SwissDraw {
             save_draw(self, conn)?;
         }
         else {
-            println!("Swiss draw exists but we can't update it yet. Creating a new1");
+            println!("Swiss draw exists so we're updating it");
             // update the draw
-            save_draw(self, conn)?;
+            update_draw(self, conn)?;
         }
         Ok(())
 
@@ -266,6 +288,79 @@ impl SwissDraw {
 
 
 }
+
+// this will load the draw from the db
+// the teams and games will be loaded into the swissdraw struct
+// they exist in their own tables and are linked by the sd_id
+// only load games that are not deleted
+pub fn load_draw_from_db(sd_id: i64, conn: &Connection) -> Result<SwissDraw> {
+    // Load draw info
+    let mut stmt = conn.prepare("SELECT id, name FROM draw WHERE id = ?1")?;
+    let draw_row = stmt.query_row(rusqlite::params![sd_id], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+        ))
+    })?;
+
+    let (id, name) = draw_row;
+
+    // Load teams
+    let mut team_list = Vec::new();
+    let mut stmt = conn.prepare("SELECT id, name, rank FROM teams WHERE sd_id = ?1")?;
+    let team_iter = stmt.query_map(rusqlite::params![sd_id], |row| {
+        Ok(Team {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            rank: row.get(2)?,
+        })
+    })?;
+
+    for team in team_iter {
+        team_list.push(team?);
+    }
+
+    // Load games (not deleted)
+    let mut games = Vec::new();
+    let mut stmt = conn.prepare(
+        "SELECT id, round, field, team_a_id, team_b_id, team_a_score, team_b_score, streamed, played
+         FROM games WHERE sd_id = ?1 AND _meta__is_deleted = 0"
+    )?;
+    let game_iter = stmt.query_map(rusqlite::params![sd_id], |row| {
+        Ok(Game {
+            id: row.get(0)?,
+            round: row.get(1)?,
+            field: row.get(2)?,
+            team_a: row.get(3)?,
+            team_b: row.get(4)?,
+            team_a_score: row.get(5)?,
+            team_b_score: row.get(6)?,
+            streamed: row.get(7)?,
+            played: row.get(8)?,
+        })
+    })?;
+
+    let mut max_round = 0;
+    for game in game_iter {
+        let g = game?;
+        if g.round > max_round {
+            max_round = g.round;
+        }
+        games.push(g);
+    }
+
+    Ok(SwissDraw {
+        id,
+        name,
+        round: max_round,
+        team_list,
+        latest_rank: Vec::new(),
+        games,
+    })
+}
+
+
+
 
 
 
@@ -524,19 +619,95 @@ let now = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as
     // and the games to the games table
     for game in &swissdraw.games {
         conn.execute(
-            "INSERT INTO games (sd_id, id, team_a_id, team_b_id, team_a_score, team_b_score, played, streamed, _meta__is_current, _meta__is_deleted, _meta__last_modified) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            rusqlite::params![swissdraw.id, game.id, game.team_a, game.team_b, game.team_a_score, game.team_b_score, game.played, game.streamed, true, false, &now],
+            "INSERT INTO games (sd_id, id, round, field, team_a_id, team_b_id, team_a_score, team_b_score, played, streamed, _meta__is_current, _meta__is_deleted, _meta__last_modified) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![swissdraw.id, game.id, game.round, game.field, game.team_a, game.team_b, game.team_a_score, game.team_b_score, game.played, game.streamed, true, false, &now],
         ).unwrap_or_else(|e| { panic!("Failed to insert game into db: {}", e);});
     };
     println!("saved games to db");
-
-
     Ok(())
-
 }
 
+// this will either update draw values IF they have changed.
+// or create new ones if they don't exist in the db
+// or set the db games to deleted if they are not in the current draw but in the db.
+fn update_draw(swissdraw: &SwissDraw, conn: &Connection) -> Result<()> {
+    let now = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs())
+        .expect("Timestamp too large for i64");
 
+    // Update draw info
+    conn.execute(
+        "UPDATE draw SET name = ?1, last_modified = ?2 WHERE id = ?3",
+        rusqlite::params![swissdraw.name, &now, swissdraw.id],
+    )?;
 
+    // Update or insert teams
+    for team in &swissdraw.team_list {
+        let updated = conn.execute(
+            "UPDATE teams SET name = ?1, rank = ?2 WHERE sd_id = ?3 AND id = ?4",
+            rusqlite::params![team.name, team.rank, swissdraw.id, team.id],
+        )?;
+        if updated == 0 {
+            conn.execute(
+                "INSERT INTO teams (sd_id, id, name, rank) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![swissdraw.id, team.id, team.name, team.rank],
+            )?;
+        }
+    }
+    // Update or insert games
+    let mut current_game_ids = HashSet::new();
+    for game in &swissdraw.games {
+        current_game_ids.insert(game.id);
+        let updated = conn.execute(
+            "UPDATE games SET round = ?1, field = ?2, team_a_id = ?3, team_b_id = ?4, team_a_score = ?5, team_b_score = ?6, played = ?7, streamed = ?8, _meta__is_current = 1, _meta__is_deleted = 0, _meta__last_modified = ?9 WHERE sd_id = ?10 AND id = ?11",
+            rusqlite::params![
+                game.round,
+                game.field,
+                game.team_a,
+                game.team_b,
+                game.team_a_score,
+                game.team_b_score,
+                game.played,
+                game.streamed,
+                &now,
+                swissdraw.id,
+                game.id
+            ],
+        )?;
+        if updated == 0 {
+            conn.execute(
+                "INSERT INTO games (sd_id, id, round, field, team_a_id, team_b_id, team_a_score, team_b_score, played, streamed, _meta__is_current, _meta__is_deleted, _meta__last_modified) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 1, 0, ?11)",
+                rusqlite::params![
+                    swissdraw.id,
+                    game.id,
+                    game.round,
+                    game.field,
+                    game.team_a,
+                    game.team_b,
+                    game.team_a_score,
+                    game.team_b_score,
+                    game.played,
+                    game.streamed,
+                    &now
+                ],
+            )?;
+        }
+    }
+
+    // Mark games as deleted if they are in the db but not in the current draw
+    let mut stmt = conn.prepare("SELECT id FROM games WHERE sd_id = ?1 AND _meta__is_deleted = 0")?;
+    let db_game_ids = stmt.query_map(rusqlite::params![swissdraw.id], |row| row.get(0))?
+        .filter_map(Result::ok)
+        .collect::<HashSet<i64>>();
+
+    for db_id in db_game_ids.difference(&current_game_ids) {
+        conn.execute(
+            "UPDATE games SET _meta__is_deleted = 1, _meta__is_current = 0, _meta__last_modified = ?1 WHERE sd_id = ?2 AND id = ?3",
+            rusqlite::params![&now, swissdraw.id, db_id],
+        )?;
+    }
+
+    Ok(())
+}
 
 
 
