@@ -115,7 +115,7 @@ pub fn Input_Teams() -> Element {
                             sd.sync_draw(&conn).expect("Failed to sync draw");
 
                             // Use navigation to route to the Enter_Scores page
-                            use_navigator().replace(Route::Enter_Scores { sd_id: sd.id });
+                            use_navigator().replace(Route::Score_Draw { sd_id: sd.id });
                         }
                     },
                     "Submit Teams"

@@ -30,4 +30,4 @@ mod score_prior_games;
 pub use score_prior_games::Score_Prior_Games;
 
 mod run_swiss_draw;
-pub use run_swiss_draw::Enter_Scores;
+pub use run_swiss_draw::{Enter_Scores,Score_Draw};
