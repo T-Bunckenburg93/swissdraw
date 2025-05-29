@@ -38,7 +38,7 @@ fn init_db(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
-// I want to lock the teams table so that its not updated.
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS teams (
             sd_id INTEGER,
