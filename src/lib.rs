@@ -129,6 +129,17 @@ impl SwissDraw {
         }
     }
 
+    pub fn check_games_played(&self) -> bool {
+        for i in &self.games {
+            if !i.played {
+                println!("Game {} vs {} has not been played", i.team_a, i.team_b);
+                return false;
+            }
+        }
+        println!("All games have been played");
+        true
+    }
+
 
     pub fn get_strengths(&mut self) -> Vec<Team> {
         let mut strengths = self.team_list.clone();
@@ -176,11 +187,14 @@ impl SwissDraw {
         let games = opt(&strengths, &cost_matrix);
 
         self.round += 1;
+        println!("Running Swiss Draw for round {}", self.round);
+
+
 
         // print the games
-        // for game in &games {
-        //     println!("Game: {} vs {}", game.team_a, game.team_b);
-        // }
+        for game in &games {
+            println!("Game: {} vs {}", game.team_a, game.team_b);
+        }
         // add the games to the swiss draw
         let mut field_n = 1;
 
@@ -196,7 +210,7 @@ impl SwissDraw {
 
 
             // print a all the game fields
-            println!("Game: {} vs {} field: {}", game.team_a, game.team_b, game.field);
+            // println!("Game: {} vs {} field: {}", game.team_a, game.team_b, game.field);
 
             // set the field number
             game.field = field_n;
@@ -204,6 +218,7 @@ impl SwissDraw {
             self.add_game(game);
             field_n += 1;
         }
+        // println!("There are {} games", self.games.len());
     }
 
     // here are a bunch of programs to load in from a CSV
@@ -581,6 +596,7 @@ pub fn opt(teams:  &Vec<Team>, costs: &DMatrix<f64>) -> Vec<Game> {
         for j in (i+1)..costs.ncols() {
             if solution.value(vars[i][j]) == 1.0 {
                 let game = Game::new( 0, teams[i].name.clone(), teams[j].name.clone());
+                println!("Gameid: {}, {} vs {}",game.id, game.team_a, game.team_b);
                 games.push(game);
             }
         }
@@ -655,7 +671,10 @@ fn update_draw(swissdraw: &SwissDraw, conn: &Connection) -> Result<()> {
     }
     // Update or insert games
     let mut current_game_ids = HashSet::new();
+    println!("n games to add/update {}", swissdraw.games.len());
     for game in &swissdraw.games {
+
+        // println!("Updating game: {} vs {}", game.team_a, game.team_b);
         current_game_ids.insert(game.id);
         let updated = conn.execute(
             "UPDATE games SET round = ?1, field = ?2, team_a_id = ?3, team_b_id = ?4, team_a_score = ?5, team_b_score = ?6, played = ?7, streamed = ?8, _meta__is_current = 1, _meta__is_deleted = 0, _meta__last_modified = ?9 WHERE sd_id = ?10 AND id = ?11",
@@ -673,6 +692,7 @@ fn update_draw(swissdraw: &SwissDraw, conn: &Connection) -> Result<()> {
                 game.id
             ],
         )?;
+        println!("Updated game {}: {} vs {}", game.id, game.team_a, game.team_b);
         if updated == 0 {
             conn.execute(
                 "INSERT INTO games (sd_id, id, round, field, team_a_id, team_b_id, team_a_score, team_b_score, played, streamed, _meta__is_current, _meta__is_deleted, _meta__last_modified) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 1, 0, ?11)",
@@ -690,6 +710,7 @@ fn update_draw(swissdraw: &SwissDraw, conn: &Connection) -> Result<()> {
                     &now
                 ],
             )?;
+            println!("Inserted new game id {}: {} vs {}",game.id, game.team_a, game.team_b);
         }
     }
 

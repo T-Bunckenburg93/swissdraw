@@ -12,7 +12,9 @@ const BLOG_CSS: Asset = asset!("/assets/styling/blog.css");
 pub fn Enter_Scores(sd_id: i64) -> Element {
     let conn = DB.lock().unwrap();
     let mut swiss_draw = load_draw_from_db(sd_id, &conn).expect("Failed to load Swiss Draw");
+    // conn.close().expect("Failed to close DB connection");
     let round = swiss_draw.round;
+
 
     // Extract only the current round's games
     let games = swiss_draw.games.iter_mut()
@@ -32,6 +34,7 @@ pub fn Enter_Scores(sd_id: i64) -> Element {
 
     let mut values = use_signal(HashMap::new);
     let mut submitted_values = use_signal(HashMap::new);
+    let mut all_games_played = use_signal(|| false);
 
 
     rsx! {
@@ -70,13 +73,19 @@ pub fn Enter_Scores(sd_id: i64) -> Element {
                                 a_score,
                                 b_score,
                             );
-
-                        }
+                            }
 
                         // Save the updated SwissDraw back to the database
                         let conn = DB.lock().unwrap();
                         if let Err(e) = swiss_draw.sync_draw(&conn) {
                             println!("Failed to sync Swiss Draw: {e}");
+                        }
+
+                        // all_games_played.set(true);
+                        if swiss_draw.check_games_played() {
+                            all_games_played.set(true);
+                        } else {
+                            all_games_played.set(false);
                         }
                     },
 
@@ -96,8 +105,20 @@ pub fn Enter_Scores(sd_id: i64) -> Element {
                             }
                         }
                     }
-                    button { r#type: "submit", value: "Submit", "Submit the form" },
+                    button { r#type: "submit", value: "Submit", "Submit Scores" },
                 }
+
+            if *all_games_played.read() == true {
+                h2 { "All Games Played!" }
+                button {
+                    onclick: move |_| {
+                        use_navigator().replace(Route::Score_Draw { sd_id });
+                    },
+                    "Score Draw"
+                }
+
+
+            }
         }
     }
 }
@@ -107,12 +128,16 @@ pub fn Enter_Scores(sd_id: i64) -> Element {
 pub fn Score_Draw(sd_id: i64) -> Element {
     let conn = DB.lock().unwrap();
     let mut swiss_draw = load_draw_from_db(sd_id, &conn).expect("Failed to load Swiss Draw");
+    // conn.close().expect("Failed to close DB connection");
+    let sd_id = swiss_draw.id;
 
     // If round is 0, just score the draw using run_draw
     if swiss_draw.round == 0 {
         swiss_draw.run_draw();
         // Sync the draw after running it
+        // let conn = DB.lock().unwrap();
         swiss_draw.sync_draw(&conn).expect("Failed to sync Swiss Draw");
+        // conn.close().expect("Failed to close DB connection");
         rsx! {
             document::Link { rel: "stylesheet", href: BLOG_CSS }
             div {
@@ -123,7 +148,7 @@ pub fn Score_Draw(sd_id: i64) -> Element {
             // add a button to take the user to the Enter_Scores page
             button {
                 onclick: move |_| {
-                    use_navigator().replace(Route::Enter_Scores { sd_id });
+                    use_navigator().replace(Route::Enter_Scores { sd_id: sd_id });
                 },
                 "Go to Enter Scores"
             }
@@ -148,12 +173,34 @@ pub fn Score_Draw(sd_id: i64) -> Element {
                     }
                 }
                 p { "Please check the scores are accurate." }
+
                 button {
                     onclick: move |_| {
-                        swiss_draw.run_draw();
-                        // Sync the draw after running it
-                        swiss_draw.sync_draw(&conn).expect("Failed to sync Swiss Draw");
-                        use_navigator().replace(Route::Enter_Scores { sd_id: swiss_draw.id });
+                        use_navigator().replace(Route::Enter_Scores { sd_id: sd_id });
+                        println!("Navigating Back to Enter Scores page for Draw #{sd_id}");
+                    },
+                    "Back To Enter Scores"
+                }
+
+                button {
+                    onclick: move |_| {
+                        // Spawn a task to run the scoring and DB update asynchronously
+                        spawn({
+                            let sd_id = sd_id;
+                            let mut sd2 = swiss_draw.clone();
+                            async move {
+                                sd2.run_draw();
+                                println!("there are {} games in this draw", sd2.games.len());
+                                println!("Running async process");
+                                let conn = DB.lock().unwrap();
+                                if let Err(e) = sd2.sync_draw(&conn) {
+                                    println!("Failed to sync Swiss Draw: {e}");
+                                }
+                                // After DB update, navigate to Enter_Scores
+                                use_navigator().replace(Route::Enter_Scores { sd_id });
+                                println!("Draw scored successfully! -> moving to Enter Scores page for Draw #{sd_id}");
+                            }
+                        });
                     },
                     "Run Scoring Process"
                 }
