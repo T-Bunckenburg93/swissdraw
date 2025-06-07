@@ -455,11 +455,17 @@ fn calculate_strengths(games: Vec<Game>, teams: &Vec<Team>) -> Vec<Team>  {
         team_list.push(team.name.clone());
     }
 
+    let mut bye = false;
+
     // if there are any games with bye, remove them
     let game_list: Vec<Game> = games.into_iter().filter(|game| game.team_a != "_BYE_" && game.team_b != "_BYE_").collect();
-    // also rm bye from the team list
-    let bye = true;
-    team_list.retain(|team| team != "_BYE_");
+
+    // check if there are an odd number of teams
+    if &team_list.len() % 2 == 1 {
+        // if there are an odd number of teams, add a bye team (at the end)
+        bye = true;
+    }
+
 
     let team_sz = team_list.len();
     let game_sz = game_list.len();
